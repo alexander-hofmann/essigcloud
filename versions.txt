@@ -1,0 +1,6 @@
+V0.0.1	
+
+Subprojekt essigbox features 
+	- measure temp every 2 seconds 
+	- displays temp on a display
+
