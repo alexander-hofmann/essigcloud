@@ -4,3 +4,9 @@ Subprojekt essigbox features
 	- measure temp every 2 seconds 
 	- displays temp on a display
 
+V0.0.2
+
+Subprojekt essigbox features
+	- measure humidity every 2 seconds
+	- display humidity on a display with temperature
+
