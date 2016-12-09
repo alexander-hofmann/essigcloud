@@ -29,8 +29,10 @@
 // Connect pin 4 (on the right) of the sensor to GROUND
 // Connect a 10K resistor from pin 2 (data) to pin 1 (power) of the sensor
 DHT dht(DHTPIN, DHTTYPE); //create instance of the sensor object
-float tm;       //variable for the sensor value in °C
+float tm;       //variable for the temperature sensor value in °C
 String tm_string;
+float hm;       //variable for the humidity sensor value in %
+String hm_string;
 char unit[3] = {(char)176, 'C', '\0'};
 
 // Connect pin 1 (GND) to GND
@@ -51,11 +53,18 @@ U8GLIB_ST7920_128X64 u8g(DISPLAY_E, DISPLAY_RW, DISPLAY_RS, U8G_PIN_NONE);
  return none                     
 ************************************/
 void draw(void) {
+  //temperature
   u8g.setFont(u8g_font_6x12);
   tm_string = String(tm);
-  u8g.drawStr(0, 40, "Temp: ");
-  u8g.drawStr(60, 40, tm_string.c_str());
-  u8g.drawStr(110, 40, unit);
+  u8g.drawStr(0, 15, "Temp: ");
+  u8g.drawStr(60, 15, tm_string.c_str());
+  u8g.drawStr(110, 15, unit);
+  //humidity
+  hm_string = String(hm);
+  u8g.drawStr(0, 45, "Hum: ");
+  u8g.drawStr(60, 45, hm_string.c_str());
+  u8g.drawStr(110, 45, "%");
+    
 }
 /************************************
  function setup                  
@@ -69,6 +78,7 @@ void setup() {
   #endif
   //DHT22 init
   tm = 0.0;   //set temp variable to 0.0 
+  hm = 0.0;   //set hum variable to 0.0
   dht.begin(); //start DHT22 sensor to work
   //display init
   pinMode(DISPLAY_LIGHT, OUTPUT); 
@@ -101,6 +111,18 @@ void loop() {
       Serial.println(tm);  
     #endif 
   }
+  hm = dht.readHumidity();
+  if (isnan(hm)) {              //if value couldn't be read, send error in DEBUG mode
+    #ifdef DEBUG
+      Serial.println("read humidity failed!");  
+    #endif  
+  } else {
+    #ifdef DEBUG
+      Serial.print("hum = ");  //in DEBUG mode, send current temp 
+      Serial.println(hm);  
+    #endif 
+  }  
+  
   u8g.firstPage();
   do {
     draw();
