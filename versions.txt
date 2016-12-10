@@ -1,12 +1,17 @@
 V0.0.1	
-
-Subprojekt essigbox features 
+Subproject essigbox features 
 	- measure temp every 2 seconds 
 	- displays temp on a display
 
 V0.0.2
-
-Subprojekt essigbox features
+Subproject essigbox features
 	- measure humidity every 2 seconds
 	- display humidity on a display with temperature
 
+V0.1.0
+Subproject essigbox features
+	- add pin 5,6,7 as relais for the heating cables 1,2,3
+	- just implement the correct order of the plugins
+	- relais might switch when pin is LOW or HIGH
+	- no logic yet
+	- turn all power on

@@ -1,28 +1,30 @@
 /************************************************************
  essigbox code                   
- V0.0.1                          
+ V0.1.0                          
  (c) 2016 hofmann engineering    
+
+This code runs on Arduino NANO.
                                  
- Each essigbox will be connected to an essigcloud access 
- point through wifi. So this code will run on an Adafruit 
- HUZZAH ESP8266 Board. To program the board do:
-   (1) Hold down the GPIO0 button, the red LED will be lit
-   (2) While holding down GPIO0, click the RESET button
-   (3) Release RESET, then release GPIO0
-   (4) When you release the RESET button, the red LED will 
-      be lit dimly, this means its ready to bootload
- Upload Speed is 115200 baud.
 *************************************************************/  
 #include <DHT.h>      //include library for DHT22 temp/humd sensor  
 #include "U8glib.h"   //include library for the display
 
-#define DEBUG 1          //set debug mode
-#define DHTPIN 12        //DHT22 data is connected to pin 2
-#define DHTTYPE DHT22    //set type to DHT22 as the library supports 3 different sensors
-#define DISPLAY_RS  2    //RS pin of the SPI ST7920 display
-#define DISPLAY_RW  3    //RW pin of the SPI ST7920 display
-#define DISPLAY_E   4    //E pin of the SPI ST7920 display
-#define DISPLAY_LIGHT 13 //backlight of the display
+#define DEBUG         1             //set debug mode
+#define DHTPIN        12            //DHT22 data is connected to pin 2
+#define DHTTYPE       DHT22         //set type to DHT22 as the library supports 3 different sensors
+#define DISPLAY_RS    2             //RS pin of the SPI ST7920 display
+#define DISPLAY_RW    3             //RW pin of the SPI ST7920 display
+#define DISPLAY_E     4             //E pin of the SPI ST7920 display
+#define DISPLAY_LIGHT 13            //backlight of the display
+#define PLUGIN_1      5             //relais1 of plugin1 is attached to pin5
+#define PLUGIN_1_ON   LOW          //relais1 reacts on HIGH
+#define PLUGIN_1_OFF  !PLUGIN_1_ON  //relais1 OFF is !ON
+#define PLUGIN_2      6             //relais3 of plugin2 is attached to pin6
+#define PLUGIN_2_ON   HIGH           //relais2 reacts on LOW
+#define PLUGIN_2_OFF  !PLUGIN_2_ON  //relais2 OFF is !ON
+#define PLUGIN_3      7             //relais3 of plugin3 is attached to pin7
+#define PLUGIN_3_ON   HIGH          //relais3 reacts on HIGH
+#define PLUGIN_3_OFF  !PLUGIN_3_ON  //relais3 OFF is !ON
 
 // Connect pin 1 (on the left) of the sensor to +5V
 // Connect pin 2 of the sensor to whatever your DHTPIN is
@@ -64,7 +66,6 @@ void draw(void) {
   u8g.drawStr(0, 45, "Hum: ");
   u8g.drawStr(60, 45, hm_string.c_str());
   u8g.drawStr(110, 45, "%");
-    
 }
 /************************************
  function setup                  
@@ -83,13 +84,21 @@ void setup() {
   //display init
   pinMode(DISPLAY_LIGHT, OUTPUT); 
   digitalWrite(DISPLAY_LIGHT, HIGH);
-  
+  pinMode(PLUGIN_1, OUTPUT);
+  pinMode(PLUGIN_2, OUTPUT);
+  pinMode(PLUGIN_3, OUTPUT);
   if ( u8g.getMode() == U8G_MODE_R3G3B2 )
     u8g.setColorIndex(255); // white
   else if ( u8g.getMode() == U8G_MODE_GRAY2BIT )
     u8g.setColorIndex(3); // max intensity
   else if ( u8g.getMode() == U8G_MODE_BW )
-    u8g.setColorIndex(1); // pixel on  
+    u8g.setColorIndex(1); // pixel on 
+  digitalWrite(PLUGIN_1, PLUGIN_1_ON);
+  delay(500);
+  digitalWrite(PLUGIN_2, PLUGIN_2_ON);
+  delay(500);
+  digitalWrite(PLUGIN_3, PLUGIN_3_ON);
+  delay(500);
 }
 /************************************
  function loop                   
