@@ -15,3 +15,14 @@ Subproject essigbox features
 	- relais might switch when pin is LOW or HIGH
 	- no logic yet
 	- turn all power on
+V0.2.0
+Subproject rxtx2mqtt
+	- esp8266 breakout board is used for data exchange between 
+	  a mqtt server and an arduino, attached to rxtx of the 
+	  esp8266
+	- define rxtx protocol 256 bytes max, key=value pairs, 
+	  key defines the mqtt topic and value is the message to
+	  transmit
+	- parse readed rx, each line is one value, read keys and values seperated by =-sign
+	- send values immediately to mqtt
+

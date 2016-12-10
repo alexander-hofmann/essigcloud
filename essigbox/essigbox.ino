@@ -1,6 +1,6 @@
 /************************************************************
  essigbox code                   
- V0.1.0                          
+ V0.2.0                          
  (c) 2016 hofmann engineering    
 
 This code runs on Arduino NANO.
