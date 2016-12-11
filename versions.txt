@@ -23,6 +23,13 @@ Subproject rxtx2mqtt
 	- define rxtx protocol 256 bytes max, key=value pairs, 
 	  key defines the mqtt topic and value is the message to
 	  transmit
+	- each rxtx message is seperated by \n
 	- parse readed rx, each line is one value, read keys and values seperated by =-sign
 	- send values immediately to mqtt
+V0.2.1
+Subproject rxtx2mqtt
+	- register topics to listen on, <topic>?
+	- topic will be observed then
+	- on receive of a mqtt message of this topic send the message <topic>=<message>\n to the
+	  attached arduino over serial
 

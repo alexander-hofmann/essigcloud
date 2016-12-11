@@ -24,7 +24,7 @@
 #define MQTT_SERVER_IP "192.168.178.2"         //MQTT Server Address within your NETWORT
 #define MQTT_PORT 1883                         //MQTT standard port is 1883
 #define MQTT_CLIENT_NAME  "rxtx2mqtt01"        //MQTT client name - here default is rxtx2mqtt01   
-#define READY_MESSAGE "READY\r"                //Welcome message when module is read - can be parsed at other side of the rxtx connection
+#define READY_MESSAGE "READY\n"                //Welcome message when module is read - can be parsed at other side of the rxtx connection
 
 WiFiClient espClient;                       //WiFiClient Object, needed to connect
 PubSubClient client(espClient);             //Connection to MQTT Server
@@ -51,6 +51,30 @@ void setup() {
   resetbuffers();                   //reset all buffers
   Serial.print(READY_MESSAGE);
 }
+
+/************************************
+ function update                  
+   will be called on receive of a new
+   mqtt message.        
+ parameter 
+   char* topic contains the topic
+   byte* payload contains the message
+   unsigned int length of the message                  
+ return none                     
+************************************/
+void update(char* topic, byte* payload, unsigned int length) {
+  int i=0;
+  char message_buff[255];
+  for(i=0; i<length; i++) {
+    message_buff[i] = payload[i];
+  }
+  message_buff[i] = '\0';
+  Serial.print(topic);
+  Serial.print("=");
+  Serial.print(message_buff);
+  Serial.print("\n");
+}
+
 /************************************
  function resetbuffers                  
    resets the reading buffers for in-
@@ -109,6 +133,7 @@ void reconnect() {
       #ifdef DEBUG
         Serial.println("connected");
       #endif
+      client.setCallback(update);
     } else {
       #ifdef DEBUG
         Serial.print("failed, rc=");
@@ -150,36 +175,57 @@ void loop() {
         Serial.println("buffer overflow, message oversize - omitting message");
       #endif  
     } else {
-      if ('=' == inbyte) {            //'=' char received - extract the key value now
-        #ifdef DEBUG 
-          Serial.println("");
-          Serial.println("= sign detected");
-        #endif
-        strcpy(key, inbuffer);        //copy the key into the key variable
-        memset(inbuffer, '\0', sizeof(inbuffer));   //and reset the inbuffer
-        inptr = 0;                    //set ptr to 0  
-        #ifdef DEBUG
-          Serial.print("key=");
-          Serial.println(key);
-        #endif
-      } else {
-        if ((char(13) == inbyte) || ('@' == inbyte)) {    //end of message detected
-          #ifdef DEBUG
+      if ('?' == inbyte) {            //if ? is detected, key before is the topic to subscribe
+          #ifdef DEBUG 
             Serial.println("");
-            Serial.println("end byte detected");
+            Serial.println("? sign detected");
           #endif
-          strcpy(value, inbuffer);         //extract the value
+          strcpy(key, inbuffer);        //copy the key into the key variable
+          boolean rc = client.subscribe(key);   //subscribe the topic to follow
           #ifdef DEBUG
-            Serial.print("value=");
-            Serial.println(value);
+            if (rc) {
+              Serial.println("subscripted topic");      
+            }
           #endif
-          client.publish(key, value);     //publish topic=key message=value
-          resetbuffers();                 //reset all buffers
+          resetbuffers();     //reset buffers to receive the next bytes
+      } else {
+        if ('=' == inbyte) {            //'=' char received - extract the key value now
+          #ifdef DEBUG 
+            Serial.println("");
+            Serial.println("= sign detected");
+          #endif
+          strcpy(key, inbuffer);        //copy the key into the key variable
+          memset(inbuffer, '\0', sizeof(inbuffer));   //and reset the inbuffer
+          inptr = 0;                    //set ptr to 0  
+          #ifdef DEBUG
+            Serial.print("key=");
+            Serial.println(key);
+          #endif
         } else {
-          inbuffer[inptr++] = inbyte;     //else store next incoming byte and increase the pointer afterwards
+          if ('\n' == inbyte) {    //end of message detected
+            if (('\0' == key[0]) || ('\0' == inbyte)) {
+              #ifdef DEBUG
+                Serial.println("");
+                Serial.println("end byte detected, but key or value is empty.");
+              #endif      
+            } else {
+              #ifdef DEBUG
+                Serial.println("");
+                Serial.println("end byte detected");
+              #endif
+              strcpy(value, inbuffer);         //extract the value
+              #ifdef DEBUG
+                Serial.print("value=");
+                Serial.println(value);
+              #endif
+              client.publish(key, value);     //publish topic=key message=value
+              resetbuffers();                 //reset all buffers
+            }
+          } else {
+            inbuffer[inptr++] = inbyte;     //else store next incoming byte and increase the pointer afterwards
+          }
         }
       }
-      
     }
   }
 }
