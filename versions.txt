@@ -32,4 +32,8 @@ Subproject rxtx2mqtt
 	- topic will be observed then
 	- on receive of a mqtt message of this topic send the message <topic>=<message>\n to the
 	  attached arduino over serial
-
+V0.2.2
+Subproject essigbox features
+	- use SoftwareSerial to send temp and humidity to MQTT server through rxtx2mqtt
+	- use topic home/essigcloud/essigbox01/temp for temp and
+	- use topic home/essigcloud/essigbox01/humidity for humidity

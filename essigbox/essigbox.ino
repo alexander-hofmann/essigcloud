@@ -8,6 +8,7 @@ This code runs on Arduino NANO.
 *************************************************************/  
 #include <DHT.h>      //include library for DHT22 temp/humd sensor  
 #include "U8glib.h"   //include library for the display
+#include <SoftwareSerial.h>  //include library for SoftwareSerial communication to mqtt via rxtx2mqtt project
 
 #define DEBUG         1             //set debug mode
 #define DHTPIN        12            //DHT22 data is connected to pin 2
@@ -25,6 +26,14 @@ This code runs on Arduino NANO.
 #define PLUGIN_3      7             //relais3 of plugin3 is attached to pin7
 #define PLUGIN_3_ON   HIGH          //relais3 reacts on HIGH
 #define PLUGIN_3_OFF  !PLUGIN_3_ON  //relais3 OFF is !ON
+#define SSER_MQTT_RX  10            //Software Serial for MQTT communication via rxtx2mqtt
+#define SSER_MQTT_TX  11            //Software Serial for MQTT communication via rxtx2mqtt
+#define READY_MESSAGE "READY\n"     //Welcome message when rxtx2mqtt module is ready - can be parsed at other side of the rxtx connection
+
+//Software Serial variable declaration
+//connect pin SSER_MQTT_RX to pin TX of ESP8266 module, programmed with rxtx2mqtt project
+//connect pin SSER_MQTT_TX to pin RX of ESP8266 module, programmed with rxtx2mqtt project
+SoftwareSerial mqttSerial(SSER_MQTT_TX, SSER_MQTT_RX); // RX, TX
 
 // Connect pin 1 (on the left) of the sensor to +5V
 // Connect pin 2 of the sensor to whatever your DHTPIN is
@@ -56,13 +65,13 @@ U8GLIB_ST7920_128X64 u8g(DISPLAY_E, DISPLAY_RW, DISPLAY_RS, U8G_PIN_NONE);
 ************************************/
 void draw(void) {
   //temperature
+  tm_string = String(tm);   
   u8g.setFont(u8g_font_6x12);
-  tm_string = String(tm);
   u8g.drawStr(0, 15, "Temp: ");
   u8g.drawStr(60, 15, tm_string.c_str());
   u8g.drawStr(110, 15, unit);
   //humidity
-  hm_string = String(hm);
+  hm_string = String(hm);  
   u8g.drawStr(0, 45, "Hum: ");
   u8g.drawStr(60, 45, hm_string.c_str());
   u8g.drawStr(110, 45, "%");
@@ -77,6 +86,32 @@ void setup() {
   #ifdef DEBUG
     Serial.begin(115200); //initialize RxD TxD with 115200 baud for debugging
   #endif
+  //Software Serial for MQTT communication via rxtx2mqtt project
+  #ifdef DEBUG
+    Serial.println("starting SoftwareSerial for MQTT communication via rxtx2mqtt project"); 
+  #endif
+  mqttSerial.begin(115200);
+  #ifdef DEBUG
+    Serial.println("Software Serial started."); 
+  #endif
+  bool passed = false;
+  String s = "";
+  while (!passed) {
+    if (mqttSerial.available() >=6 ) {
+      s = mqttSerial.readString();
+      if (s.endsWith(READY_MESSAGE)) {
+        passed = true;
+      }
+    }
+  }
+  //delete rx stack
+  while (mqttSerial.available()) {
+    char c = mqttSerial.read();
+  }
+  #ifdef DEBUG
+    Serial.println("READY received."); 
+  #endif
+
   //DHT22 init
   tm = 0.0;   //set temp variable to 0.0 
   hm = 0.0;   //set hum variable to 0.0
@@ -110,6 +145,8 @@ void setup() {
 /************************************/
 void loop() {
   tm = dht.readTemperature();   //read temp from DHT22
+  mqttSerial.print("home/essigcloud/essigbox01/temp=");
+  mqttSerial.println(tm); 
   if (isnan(tm)) {              //if value couldn't be read, send error in DEBUG mode
     #ifdef DEBUG
       Serial.println("read temp failed!");  
@@ -121,6 +158,8 @@ void loop() {
     #endif 
   }
   hm = dht.readHumidity();
+  mqttSerial.print("home/essigcloud/essigbox01/humidity=");
+  mqttSerial.println(hm); 
   if (isnan(hm)) {              //if value couldn't be read, send error in DEBUG mode
     #ifdef DEBUG
       Serial.println("read humidity failed!");  
@@ -131,7 +170,6 @@ void loop() {
       Serial.println(hm);  
     #endif 
   }  
-  
   u8g.firstPage();
   do {
     draw();
