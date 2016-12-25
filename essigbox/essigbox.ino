@@ -30,6 +30,10 @@ This code runs on Arduino NANO.
 #define DEBUG_TX  11            //Software Serial for MQTT communication via rxtx2mqtt
 #define READY_MESSAGE "READY\n"     //Welcome message when rxtx2mqtt module is ready - can be parsed at other side of the rxtx connection
 
+boolean heater1 = HIGH;
+boolean heater2 = HIGH;
+boolean heater3 = HIGH;
+
 //Software Serial variable declaration
 //connect pin rx to pin TX of ESP8266 module, programmed with rxtx2mqtt project
 //connect pin tx to pin RX of ESP8266 module, programmed with rxtx2mqtt project
@@ -138,27 +142,35 @@ void heatingCable(boolean cable1, boolean cable2, boolean cable3) {
    manage heating cables 1,2 and 3
    according to the desired target
    temperature.
+   2-point controller with fixed hysteresis
+   for heater cable 1 of 0.4 degrees
+   heater cable 2 of 4 degrees
+   heater cable 1 if 6 degrees
  parameter none                  
  return none                     
 ************************************/
 void controlTemp() {
-  float error = tm - targetTemp;
-  if (error <= -1) {
-    heatingCable(HIGH, HIGH, HIGH);
-    return;
+  float error = tm - targetTemp; //positive error -> cooling, negative error -> heating
+  
+  if (error > 3) {
+    heater1 = LOW;
   }
-  if ((error > -1) && (error < 1)) {
-      heatingCable(HIGH, HIGH, LOW);
+  if (error > 2) {
+    heater2 = LOW; 
   }
-  if ((error >= 1) && (error < 2)) {
-    heatingCable(HIGH, LOW, LOW);
-    return;
+  if (error > 0.2) {
+    heater3 = LOW;
   }
-  if (error >= 2) {
-    heatingCable(LOW, LOW, LOW);
-    return;
+  if (error < -3) {
+    heater1 = HIGH;
   }
-
+  if (error < -2) {
+    heater2 = HIGH;
+  }
+  if (error < -0.2) {
+    heater3 = HIGH;
+  }
+  heatingCable(heater1, heater2, heater3);
 }
 /************************************
  function setup                  

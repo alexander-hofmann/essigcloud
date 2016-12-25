@@ -51,4 +51,10 @@ V0.2.4
 Subproject essigbox bugfix
 	- rxtx2mqtt requires 115200 baud, but SoftSerial cannot receive that fast.
 	- change debug channel to SoftSerial and move Arduinos Serial to rxtx2mqtt.
+V0.2.5
+Subproject essigbox bugfix controller
+	- implements a 3 two-point-controller for better temp regulation
+	- hysteresis of heater cable 1 is 6 degrees
+	- hysteresis of heater cable 2 is 4 degrees
+	- hysteresis of heater cable 3 is 0.4 degrees
 
