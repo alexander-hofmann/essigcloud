@@ -37,3 +37,15 @@ Subproject essigbox features
 	- use SoftwareSerial to send temp and humidity to MQTT server through rxtx2mqtt
 	- use topic home/essigcloud/essigbox01/temp for temp and
 	- use topic home/essigcloud/essigbox01/humidity for humidity
+V0.2.3
+Subproject essigbox features
+	- listen to topic home/essigcloud/essigbox01/config/#
+	- expecting home/essigcloud/essigbox01/config/temp to have the target temp
+	- controller for target temperature
+		- current + 5 < target	 -> turnon all cables
+		- current + 3 < target	 -> turnon cable 1+2 turnoff cable 3
+		- current == target	 -> turnon cable 1 turnoff cable 2+3
+		- current - 3 > target   -> turnoff all cables
+	- post status of the heating cables into home/essigcloud/essigbox01/heating1 .../heating2 .../heating3
+
+

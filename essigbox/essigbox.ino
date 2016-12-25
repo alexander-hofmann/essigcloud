@@ -34,6 +34,7 @@ This code runs on Arduino NANO.
 //connect pin SSER_MQTT_RX to pin TX of ESP8266 module, programmed with rxtx2mqtt project
 //connect pin SSER_MQTT_TX to pin RX of ESP8266 module, programmed with rxtx2mqtt project
 SoftwareSerial mqttSerial(SSER_MQTT_TX, SSER_MQTT_RX); // RX, TX
+float targetTemp = 0.0;
 
 // Connect pin 1 (on the left) of the sensor to +5V
 // Connect pin 2 of the sensor to whatever your DHTPIN is
@@ -77,6 +78,87 @@ void draw(void) {
   u8g.drawStr(110, 45, "%");
 }
 /************************************
+ function processMQTTSerial                   
+   data available from rxtx2mqtt module 
+   meaning that MQTT Server sends data.
+ parameter none                  
+ return none                     
+************************************/
+void processMQTTSerial(void) {
+  String s;
+  s = mqttSerial.readString();  //read from rxtx2mqtt project module
+  #ifdef DEBUG
+    Serial.print(s);
+  #endif  
+  if (s.startsWith("home/essigcloud/essigbox01/config/temp")) {   //if message is a new target temp message
+    int equalsign = s.lastIndexOf("=");                           //search from equal sign
+    if (equalsign > -1) {                                         //equal sign not found, exit
+      String t = s.substring(equalsign + 1);                      //extract substring, first parameter is inclusive, so add 1
+      targetTemp = t.toFloat();                                   //convert the string to a float and store it into the target temp variable
+      #ifdef DEBUG
+        Serial.print("new target temp received from MQTT = ");
+        Serial.println(t.c_str()); 
+      #endif
+    }
+  }
+}
+/************************************
+ function heatingCable                   
+   manage heating cables 1,2 and 3
+ parameter boolean cable1, cable2, cable3
+   HIGH means turn on, LOW means off                  
+ return none                     
+************************************/
+void heatingCable(boolean cable1, boolean cable2, boolean cable3) {
+    if (cable1) {
+      digitalWrite(PLUGIN_1, PLUGIN_1_ON);
+      mqttSerial.println("home/essigcloud/essigbox01/heating1=1");   
+    } else {
+      digitalWrite(PLUGIN_1, PLUGIN_1_OFF); 
+      mqttSerial.println("home/essigcloud/essigbox01/heating1=0");       
+    }
+    if (cable2) {
+      digitalWrite(PLUGIN_2, PLUGIN_2_ON);
+      mqttSerial.println("home/essigcloud/essigbox01/heating2=1");
+    } else {
+      digitalWrite(PLUGIN_2, PLUGIN_2_OFF);
+      mqttSerial.println("home/essigcloud/essigbox01/heating2=0");      
+    }
+    if (cable3) {
+      digitalWrite(PLUGIN_3, PLUGIN_3_ON);
+      mqttSerial.println("home/essigcloud/essigbox01/heating3=1");
+    } else {
+      digitalWrite(PLUGIN_3, PLUGIN_3_OFF);
+      mqttSerial.println("home/essigcloud/essigbox01/heating3=0");      
+    }
+}
+/************************************
+ function controlTemp                   
+   manage heating cables 1,2 and 3
+   according to the desired target
+   temperature.
+ parameter none                  
+ return none                     
+************************************/
+void controlTemp() {
+  if (tm + 5 < targetTemp) {
+    heatingCable(HIGH, HIGH, HIGH);
+    return;
+  }
+  if (tm + 3 < targetTemp) {
+    heatingCable(HIGH, HIGH, LOW);
+    return;
+  }
+  if (tm == targetTemp) {
+    heatingCable(HIGH, LOW, LOW);
+    return;
+  }
+  if (tm - 3 > targetTemp) {
+    heatingCable(LOW, LOW, LOW);
+    return;
+  }
+}
+/************************************
  function setup                  
    initializes everything        
  parameter none                  
@@ -111,7 +193,11 @@ void setup() {
   #ifdef DEBUG
     Serial.println("READY received."); 
   #endif
-
+  delay(500);
+  mqttSerial.println("home/essigcloud/essigbox01/config/#?");
+  if (mqttSerial.available()) {
+    processMQTTSerial();
+  }
   //DHT22 init
   tm = 0.0;   //set temp variable to 0.0 
   hm = 0.0;   //set hum variable to 0.0
@@ -128,12 +214,7 @@ void setup() {
     u8g.setColorIndex(3); // max intensity
   else if ( u8g.getMode() == U8G_MODE_BW )
     u8g.setColorIndex(1); // pixel on 
-  digitalWrite(PLUGIN_1, PLUGIN_1_ON);
-  delay(500);
-  digitalWrite(PLUGIN_2, PLUGIN_2_ON);
-  delay(500);
-  digitalWrite(PLUGIN_3, PLUGIN_3_ON);
-  delay(500);
+  heatingCable(LOW, LOW, LOW);
 }
 /************************************
  function loop                   
@@ -153,8 +234,8 @@ void loop() {
     #endif  
   } else {
     #ifdef DEBUG
-      Serial.print("temp = ");  //in DEBUG mode, send current temp 
-      Serial.println(tm);  
+      //Serial.print("temp = ");  //in DEBUG mode, send current temp 
+      //Serial.println(tm);  
     #endif 
   }
   hm = dht.readHumidity();
@@ -166,10 +247,17 @@ void loop() {
     #endif  
   } else {
     #ifdef DEBUG
-      Serial.print("hum = ");  //in DEBUG mode, send current temp 
-      Serial.println(hm);  
+      //Serial.print("hum = ");  //in DEBUG mode, send current temp 
+      //Serial.println(hm);  
     #endif 
-  }  
+  }
+  //process incoming messages from MQTT
+  if (mqttSerial.available()) {
+    processMQTTSerial();
+  }
+  //control the temperature
+  controlTemp();
+  //render display
   u8g.firstPage();
   do {
     draw();
