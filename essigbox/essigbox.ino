@@ -26,14 +26,15 @@ This code runs on Arduino NANO.
 #define PLUGIN_3      7             //relais3 of plugin3 is attached to pin7
 #define PLUGIN_3_ON   HIGH          //relais3 reacts on HIGH
 #define PLUGIN_3_OFF  !PLUGIN_3_ON  //relais3 OFF is !ON
-#define SSER_MQTT_RX  10            //Software Serial for MQTT communication via rxtx2mqtt
-#define SSER_MQTT_TX  11            //Software Serial for MQTT communication via rxtx2mqtt
+#define DEBUG_RX  10            //Software Serial for MQTT communication via rxtx2mqtt
+#define DEBUG_TX  11            //Software Serial for MQTT communication via rxtx2mqtt
 #define READY_MESSAGE "READY\n"     //Welcome message when rxtx2mqtt module is ready - can be parsed at other side of the rxtx connection
 
 //Software Serial variable declaration
-//connect pin SSER_MQTT_RX to pin TX of ESP8266 module, programmed with rxtx2mqtt project
-//connect pin SSER_MQTT_TX to pin RX of ESP8266 module, programmed with rxtx2mqtt project
-SoftwareSerial mqttSerial(SSER_MQTT_TX, SSER_MQTT_RX); // RX, TX
+//connect pin rx to pin TX of ESP8266 module, programmed with rxtx2mqtt project
+//connect pin tx to pin RX of ESP8266 module, programmed with rxtx2mqtt project
+//connect the computer to DEBUG_TX and DEBUG_RX for Debugging messages
+SoftwareSerial debugSerial(DEBUG_TX, DEBUG_RX); // RX, TX
 float targetTemp = 0.0;
 
 // Connect pin 1 (on the left) of the sensor to +5V
@@ -86,9 +87,9 @@ void draw(void) {
 ************************************/
 void processMQTTSerial(void) {
   String s;
-  s = mqttSerial.readString();  //read from rxtx2mqtt project module
+  s = Serial.readString();  //read from rxtx2mqtt project module
   #ifdef DEBUG
-    Serial.print(s);
+    debugSerial.print(s);
   #endif  
   if (s.startsWith("home/essigcloud/essigbox01/config/temp")) {   //if message is a new target temp message
     int equalsign = s.lastIndexOf("=");                           //search from equal sign
@@ -96,8 +97,8 @@ void processMQTTSerial(void) {
       String t = s.substring(equalsign + 1);                      //extract substring, first parameter is inclusive, so add 1
       targetTemp = t.toFloat();                                   //convert the string to a float and store it into the target temp variable
       #ifdef DEBUG
-        Serial.print("new target temp received from MQTT = ");
-        Serial.println(t.c_str()); 
+        debugSerial.print("new target temp received from MQTT = ");
+        debugSerial.println(t.c_str()); 
       #endif
     }
   }
@@ -112,24 +113,24 @@ void processMQTTSerial(void) {
 void heatingCable(boolean cable1, boolean cable2, boolean cable3) {
     if (cable1) {
       digitalWrite(PLUGIN_1, PLUGIN_1_ON);
-      mqttSerial.println("home/essigcloud/essigbox01/heating1=1");   
+      Serial.println("home/essigcloud/essigbox01/heating1=1");   
     } else {
       digitalWrite(PLUGIN_1, PLUGIN_1_OFF); 
-      mqttSerial.println("home/essigcloud/essigbox01/heating1=0");       
+      Serial.println("home/essigcloud/essigbox01/heating1=0");       
     }
     if (cable2) {
       digitalWrite(PLUGIN_2, PLUGIN_2_ON);
-      mqttSerial.println("home/essigcloud/essigbox01/heating2=1");
+      Serial.println("home/essigcloud/essigbox01/heating2=1");
     } else {
       digitalWrite(PLUGIN_2, PLUGIN_2_OFF);
-      mqttSerial.println("home/essigcloud/essigbox01/heating2=0");      
+      Serial.println("home/essigcloud/essigbox01/heating2=0");      
     }
     if (cable3) {
       digitalWrite(PLUGIN_3, PLUGIN_3_ON);
-      mqttSerial.println("home/essigcloud/essigbox01/heating3=1");
+      Serial.println("home/essigcloud/essigbox01/heating3=1");
     } else {
       digitalWrite(PLUGIN_3, PLUGIN_3_OFF);
-      mqttSerial.println("home/essigcloud/essigbox01/heating3=0");      
+      Serial.println("home/essigcloud/essigbox01/heating3=0");      
     }
 }
 /************************************
@@ -141,22 +142,23 @@ void heatingCable(boolean cable1, boolean cable2, boolean cable3) {
  return none                     
 ************************************/
 void controlTemp() {
-  if (tm + 5 < targetTemp) {
+  float error = tm - targetTemp;
+  if (error <= -1) {
     heatingCable(HIGH, HIGH, HIGH);
     return;
   }
-  if (tm + 3 < targetTemp) {
-    heatingCable(HIGH, HIGH, LOW);
-    return;
+  if ((error > -1) && (error < 1)) {
+      heatingCable(HIGH, HIGH, LOW);
   }
-  if (tm == targetTemp) {
+  if ((error >= 1) && (error < 2)) {
     heatingCable(HIGH, LOW, LOW);
     return;
   }
-  if (tm - 3 > targetTemp) {
+  if (error >= 2) {
     heatingCable(LOW, LOW, LOW);
     return;
   }
+
 }
 /************************************
  function setup                  
@@ -166,36 +168,39 @@ void controlTemp() {
 ************************************/
 void setup() {
   #ifdef DEBUG
-    Serial.begin(115200); //initialize RxD TxD with 115200 baud for debugging
+    debugSerial.begin(115200); //initialize RxD TxD with 115200 baud for debugging
   #endif
   //Software Serial for MQTT communication via rxtx2mqtt project
   #ifdef DEBUG
-    Serial.println("starting SoftwareSerial for MQTT communication via rxtx2mqtt project"); 
+    debugSerial.println("starting SoftwareSerial for MQTT communication via rxtx2mqtt project"); 
   #endif
-  mqttSerial.begin(115200);
+  Serial.begin(115200);
   #ifdef DEBUG
-    Serial.println("Software Serial started."); 
+    debugSerial.println("Software Serial started."); 
   #endif
   bool passed = false;
   String s = "";
   while (!passed) {
-    if (mqttSerial.available() >=6 ) {
-      s = mqttSerial.readString();
+    if (Serial.available() >=6 ) {
+      s = Serial.readString();
+      #ifdef DEBUG
+        debugSerial.println(s); 
+      #endif      
       if (s.endsWith(READY_MESSAGE)) {
         passed = true;
       }
     }
   }
   //delete rx stack
-  while (mqttSerial.available()) {
-    char c = mqttSerial.read();
+  while (Serial.available()) {
+    char c = Serial.read();
   }
   #ifdef DEBUG
-    Serial.println("READY received."); 
+    debugSerial.println("READY received."); 
   #endif
   delay(500);
-  mqttSerial.println("home/essigcloud/essigbox01/config/#?");
-  if (mqttSerial.available()) {
+  Serial.println("home/essigcloud/essigbox01/config/#?");
+  if (Serial.available()) {
     processMQTTSerial();
   }
   //DHT22 init
@@ -226,33 +231,33 @@ void setup() {
 /************************************/
 void loop() {
   tm = dht.readTemperature();   //read temp from DHT22
-  mqttSerial.print("home/essigcloud/essigbox01/temp=");
-  mqttSerial.println(tm); 
+  Serial.print("home/essigcloud/essigbox01/temp=");
+  Serial.println(tm); 
   if (isnan(tm)) {              //if value couldn't be read, send error in DEBUG mode
     #ifdef DEBUG
-      Serial.println("read temp failed!");  
+      debugSerial.println("read temp failed!");  
     #endif  
   } else {
     #ifdef DEBUG
-      //Serial.print("temp = ");  //in DEBUG mode, send current temp 
-      //Serial.println(tm);  
+      debugSerial.print("temp = ");  //in DEBUG mode, send current temp 
+      debugSerial.println(tm);  
     #endif 
   }
   hm = dht.readHumidity();
-  mqttSerial.print("home/essigcloud/essigbox01/humidity=");
-  mqttSerial.println(hm); 
+  Serial.print("home/essigcloud/essigbox01/humidity=");
+  Serial.println(hm); 
   if (isnan(hm)) {              //if value couldn't be read, send error in DEBUG mode
     #ifdef DEBUG
-      Serial.println("read humidity failed!");  
+      debugSerial.println("read humidity failed!");  
     #endif  
   } else {
     #ifdef DEBUG
-      //Serial.print("hum = ");  //in DEBUG mode, send current temp 
-      //Serial.println(hm);  
+      //debugSerial.print("hum = ");  //in DEBUG mode, send current temp 
+      //debugSerial.println(hm);  
     #endif 
   }
   //process incoming messages from MQTT
-  if (mqttSerial.available()) {
+  if (Serial.available()) {
     processMQTTSerial();
   }
   //control the temperature
